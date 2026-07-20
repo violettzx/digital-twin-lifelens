@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { scenarios } from "./data/scenarios.js";
-import { buildBranchingProjection } from "./agents/projection.js";
+import { buildBranchingProjection, projectWithActions } from "./agents/projection.js";
 import { answerAsFutureYou } from "./agents/future_you.js";
 import { customerProfiles } from "./data/customer_profiles.js";
 import { buildCustomerIntelligence } from "./agents/intelligence.js";
@@ -43,6 +43,37 @@ app.get("/api/scenarios/:id", (req, res) => {
   res.json({
     scenario,
     projection: buildBranchingProjection(scenario),
+  });
+});
+
+app.post("/api/project", (req, res) => {
+  const scenario = findScenario(req.body.scenarioId);
+  if (!scenario) {
+    return res.status(404).json({ error: "Scenario not found." });
+  }
+
+  const actions = Array.isArray(req.body.actions)
+    ? req.body.actions.map((action) => ({
+        id: action.id || action.name,
+        label: action.label || action.name,
+        name: action.name,
+        monthlyImpact: Number(action.monthlyImpact) || 0,
+        startsMonth: action.startsMonth ?? 1,
+        endsMonth: action.endsMonth,
+      }))
+    : [];
+
+  const ignored = projectWithActions(scenario, [], { branch: "ignored" });
+  const modeled = projectWithActions(scenario, actions, { branch: "modeled" });
+
+  res.json({
+    ignored,
+    modeled,
+    delta: {
+      endingBalance: modeled.endingBalance - ignored.endingBalance,
+      minBalance: modeled.minBalance - ignored.minBalance,
+      overdraftAvoided: Boolean(ignored.overdraftMonth && !modeled.overdraftMonth),
+    },
   });
 });
 
