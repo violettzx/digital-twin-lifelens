@@ -18,6 +18,9 @@ const state = {
   futureMessages: [],
   futureBusy: false,
   futureSessionId: `demo-${Date.now()}`,
+  game: null,
+  avatarProfile: { coins: 120, owned: [], equipped: [], colour: "sky" },
+  futureCanvas: { events: [], filter: "all", connections: [] },
 };
 
 const VIEW_META = {
@@ -37,9 +40,9 @@ const VIEW_META = {
     subhead: "148 relationships · filter to life events, then open the twin.",
   },
   future: {
-    breadcrumb: "DIGITAL TWIN / <span>FUTURE YOU</span>",
-    title: "Ask the customer’s digital twin",
-    subhead: "Grounded in projected cashflow — not today’s balance sheet alone.",
+    breadcrumb: "LIFELENS / <span>PLAY YOUR FUTURE</span>",
+    title: "Welcome back, Future Builder.",
+    subhead: "Explore a life chapter, make your moves, and meet the future they create.",
   },
 };
 
@@ -162,6 +165,7 @@ function setView(name) {
     renderFuturePicker();
     renderFutureSuggestions();
     renderFutureThread();
+    renderPlayFuture();
   }
 }
 
@@ -195,9 +199,11 @@ async function loadScenario(id) {
   }
   if (state.view === "future") {
     state.futureMessages = [];
+    state.game = null;
     renderFuturePicker();
     renderFutureSuggestions();
     renderFutureThread();
+    renderPlayFuture();
   }
 }
 
@@ -757,7 +763,7 @@ function renderFuturePicker() {
   el.innerHTML = Object.entries(customerDetails)
     .map(
       ([id, d]) =>
-        `<button type="button" class="future-client ${id === state.scenarioId ? "active" : ""}" data-id="${id}"><span class="tab-avatar">${escapeHtml(d.initials)}</span><span><strong>${escapeHtml(d.fullName)}</strong><small>${escapeHtml(d.context)}</small></span></button>`
+        `<button type="button" class="future-client ${id === state.scenarioId ? "active" : ""}" data-id="${id}"><span class="chapter-icon">${id === "new-parent" ? "✦" : id === "job-loss" ? "↗" : "♡"}</span><span><strong>${escapeHtml(id === "new-parent" ? "Growing a family" : id === "job-loss" ? "Career reset" : "Getting married")}</strong><small>${escapeHtml(d.context)}</small></span></button>`
     )
     .join("");
   el.querySelectorAll("button").forEach((btn) => {
@@ -770,6 +776,361 @@ function renderFuturePicker() {
       renderFutureThread();
     });
   });
+}
+
+const GAME_ROUNDS = [
+  { month: 1, icon: "✦", kind: "LIFE EVENT", title: "Your baby arrives early", story: "Everyone is healthy—but the extra medical care and baby essentials cost S$1,800. How do you handle it?", choices: [
+    { label: "Use the emergency fund", detail: "Pay today and keep debt at zero.", effects: { cash: -1800, stress: 7, happy: 4 }, reaction: "We are debt-free, but our safety net suddenly feels very small.", tag: "buffer" },
+    { label: "Put it on your credit card", detail: "Protect cash now; carry the balance forward.", effects: { debt: 1800, stress: 12, happy: 2 }, reaction: "Cash is intact, but that bill followed us home.", tag: "credit" },
+    { label: "Choose a 6-month instalment plan", detail: "S$300 monthly, with no interest.", effects: { cash: -300, monthly: -300, stress: 5, happy: 3 }, reaction: "The cost feels manageable—provided nothing else goes wrong.", tag: "instalment" },
+  ]},
+  { month: 2, icon: "⌂", kind: "FAMILY CHOICE", title: "The daycare decision", story: "Your preferred daycare has one place left. Every option changes more than just your bank balance.", choices: [
+    { label: "Nearby premium daycare", detail: "More family time, S$1,250 per month.", effects: { cash: -1250, monthly: -1250, stress: -8, happy: 12 }, reaction: "The commute is easy and we get precious evenings back.", tag: "premium-care" },
+    { label: "Affordable daycare farther away", detail: "S$850 per month, but a longer commute.", effects: { cash: -850, monthly: -850, stress: 6, happy: 4 }, reaction: "We save money, though the long days take a little more from us.", tag: "value-care" },
+    { label: "Extend parental leave", detail: "Lose S$1,600 income monthly for three months.", effects: { cash: -1600, monthly: -400, stress: -3, happy: 15 }, reaction: "The budget tightens, but we get a chapter together that will not return.", tag: "leave" },
+  ]},
+  { month: 3, icon: "◇", kind: "HIDDEN GAP REVEALED", title: "Your protection check", story: "LifeLens finds a S$420K family protection gap. You can protect more, preserve cash, or postpone the decision.", choices: [
+    { label: "Close the full protection gap", detail: "S$118 monthly for comprehensive cover.", effects: { cash: -118, monthly: -118, protection: 45, stress: -9 }, reaction: "Knowing the family is protected changes how I sleep at night.", tag: "full-cover" },
+    { label: "Start with essential cover", detail: "S$62 monthly; review again next year.", effects: { cash: -62, monthly: -62, protection: 27, stress: -4 }, reaction: "We covered the biggest risks without over-stretching today.", tag: "basic-cover" },
+    { label: "Decide later", detail: "Keep every dollar available for now.", effects: { protection: -8, stress: 8 }, reaction: "We kept the cash, but the gap is still sitting quietly behind us.", tag: "no-cover" },
+  ]},
+  { month: 5, icon: "!", kind: "SURPRISE EVENT", title: "The fridge stops working", story: "Milk, meal prep and groceries are at risk. Your earlier choices determine how painful this feels.", choices: [
+    { label: "Repair it today", detail: "S$480 and a shorter lifespan.", effects: { cash: -480, stress: 4, happy: -2 }, reaction: "Not glamorous, but the groceries are safe and life keeps moving.", tag: "repair" },
+    { label: "Replace it with an efficient model", detail: "S$1,400 now; lower future electricity costs.", effects: { cash: -1400, monthly: 35, stress: 2, happy: 8 }, reaction: "It hurt today, but Future Me will thank us every month.", tag: "replace" },
+    { label: "Use credit and preserve the buffer", detail: "S$1,400 debt, paid over time.", effects: { debt: 1400, stress: 10, happy: 5 }, reaction: "The fridge is fixed. The payment is now tomorrow's problem.", tag: "fridge-credit" },
+  ]},
+  { month: 8, icon: "↗", kind: "OPPORTUNITY", title: "A promotion comes with a catch", story: "The role adds S$900 monthly, but requires longer hours and more childcare support.", choices: [
+    { label: "Take the promotion", detail: "+S$900 income, −S$300 extra childcare monthly.", effects: { cash: 600, monthly: 600, stress: 14, happy: -4 }, reaction: "The future grows faster, though our weekdays feel heavier.", tag: "promotion" },
+    { label: "Negotiate flexible hours", detail: "+S$450 monthly with more time at home.", effects: { cash: 450, monthly: 450, stress: 2, happy: 8 }, reaction: "Not the biggest raise, but it fits the life we actually want.", tag: "flex" },
+    { label: "Stay in the current role", detail: "Protect stability and family time.", effects: { stress: -8, happy: 6 }, reaction: "We chose enough—for now—and that can be a powerful choice too.", tag: "stay" },
+  ]},
+  { month: 12, icon: "★", kind: "FINAL DECISION", title: "Your first family holiday", story: "You made it through the year. Do you celebrate now, protect the buffer, or split the difference?", choices: [
+    { label: "Take the S$2,200 holiday", detail: "Spend on a memory you will keep.", effects: { cash: -2200, stress: -12, happy: 20 }, reaction: "The balance is lower, but this year gave us a memory—not only a spreadsheet.", tag: "holiday" },
+    { label: "Keep building the safety net", detail: "Put the full amount toward resilience.", effects: { cash: 300, stress: -3, protection: 8, happy: -3 }, reaction: "We delayed the trip and bought ourselves calm for the next surprise.", tag: "save" },
+    { label: "Choose a nearby S$750 getaway", detail: "Celebrate while preserving most of the buffer.", effects: { cash: -750, stress: -8, happy: 12 }, reaction: "We found a middle path: a little joy now and some safety later.", tag: "mini-break" },
+  ]},
+];
+
+const AVATAR_ITEMS = [
+  { id: "cap", name: "Future Builder Cap", type: "hat", icon: "⌒", cost: 120, description: "For people with a plan—or at least a spreadsheet." },
+  { id: "glasses", name: "Focus Frames", type: "glasses", icon: "○—○", cost: 160, description: "See the trade-offs a little more clearly." },
+  { id: "plant", name: "Growing Goals", type: "room", icon: "♧", cost: 90, description: "A tiny reminder that consistency compounds." },
+  { id: "lamp", name: "Calm Glow", type: "room", icon: "◉", cost: 140, description: "Makes every future feel slightly warmer." },
+  { id: "pet", name: "Buffer Buddy", type: "companion", icon: "●ᴥ●", cost: 240, description: "Stays calm through surprise expenses." },
+];
+
+const DECISION_RESOURCES = [
+  { id: "twin", icon: "✦", title: "Consult Future You", copy: "Get a personalised clue based on your current position.", limited: true },
+  { id: "guide", icon: "?", title: "Open quick guide", copy: "Understand the financial principle behind this decision." },
+  { id: "rm", icon: "◌", title: "Ask Jamie", copy: "See the question your RM would help you work through." },
+];
+
+const CANVAS_EVENTS = [
+  { id: "second-child", icon: "●", title: "Second child", category: "family", recommended: true, cost: 1800, monthly: -950, stress: 8, protection: 12, caption: "A growing family needs more space, protection and monthly flexibility." },
+  { id: "home", icon: "⌂", title: "Buy a family home", category: "assets", recommended: true, cost: 65000, monthly: -1700, stress: 10, asset: 720000, caption: "A home builds an asset while creating a much larger fixed commitment." },
+  { id: "car", icon: "▰", title: "Buy a car", category: "assets", recommended: true, cost: 38000, monthly: -1100, stress: 4, caption: "More convenience for the family, with a significant total ownership cost." },
+  { id: "promotion", icon: "↗", title: "Career promotion", category: "career", recommended: true, cost: 0, monthly: 1200, stress: 12, caption: "Higher income accelerates goals, but the extra workload changes wellbeing." },
+  { id: "career-break", icon: "Ⅱ", title: "Six-month career break", category: "career", recommended: false, cost: 12000, monthly: -650, stress: -18, caption: "Time away supports recovery or caregiving but temporarily reduces income." },
+  { id: "wedding", icon: "◇", title: "Wedding celebration", category: "family", recommended: false, cost: 42000, monthly: -250, stress: 7, caption: "A major celebration creates a short-term cash peak and shared-money decisions." },
+  { id: "eldercare", icon: "♡", title: "Support ageing parents", category: "family", recommended: true, cost: 5000, monthly: -600, stress: 9, protection: 8, caption: "Care responsibilities add recurring costs and make family protection more important." },
+  { id: "business", icon: "✦", title: "Start a side business", category: "career", recommended: false, cost: 10000, monthly: 450, stress: 15, asset: 18000, caption: "Entrepreneurship adds uncertainty today and potential income later." },
+];
+
+function newGame() {
+  return { round: 0, cash: 4200, debt: 0, happy: 72, stress: 28, protection: 35, monthly: 0, choices: [], history: [4200], complete: false, rewindMode: false, consults: 2, earnedCoins: 0, resourceOpen: null };
+}
+
+function clampGame(value) { return Math.max(0, Math.min(100, value)); }
+
+function applyGameChoice(choiceIndex) {
+  const game = state.game;
+  const round = GAME_ROUNDS[game.round];
+  const choice = round.choices[choiceIndex];
+  const e = choice.effects;
+  game.cash += (e.cash || 0) + game.monthly * Math.max(1, round.month - (GAME_ROUNDS[game.round - 1]?.month || 0));
+  game.debt = Math.max(0, game.debt + (e.debt || 0));
+  game.happy = clampGame(game.happy + (e.happy || 0));
+  game.stress = clampGame(game.stress + (e.stress || 0));
+  game.protection = clampGame(game.protection + (e.protection || 0));
+  game.monthly += e.monthly || 0;
+  game.choices.push({ round: game.round, choiceIndex, label: choice.label, tag: choice.tag, reaction: choice.reaction });
+  game.resourceOpen = null;
+  game.history.push(game.cash);
+  const earned = 55 + (game.stress < 55 ? 15 : 0) + (game.cash > 0 ? 10 : 0);
+  game.earnedCoins += earned;
+  state.avatarProfile.coins += earned;
+  game.round += 1;
+  game.complete = game.round >= GAME_ROUNDS.length;
+  renderPlayFuture();
+}
+
+function gameScore(game) {
+  const cashScore = Math.max(0, Math.min(30, 15 + game.cash / 500));
+  const debtPenalty = Math.min(20, game.debt / 250);
+  return Math.max(0, Math.min(100, Math.round(cashScore + game.happy * .22 + (100 - game.stress) * .18 + game.protection * .25 - debtPenalty)));
+}
+
+function gameAchievements(game) {
+  const tags = new Set(game.choices.map((c) => c.tag));
+  const items = [];
+  if (game.cash > 0) items.push(["☂", "Rainy Day Ready", "Finished with a positive buffer"]);
+  if (game.debt === 0) items.push(["◇", "Debt Dodger", "Completed the year without new debt"]);
+  if (game.protection >= 60) items.push(["⬡", "Protected Future", "Closed the family's biggest protection gaps"]);
+  if (game.stress < 55) items.push(["☼", "Calm Under Pressure", "Kept stress manageable through change"]);
+  if (tags.has("mini-break") || tags.has("holiday")) items.push(["★", "Memory Maker", "Made room for joy as well as money"]);
+  return items.slice(0, 4);
+}
+
+function renderGameTimeline() {
+  const game = state.game;
+  $("#gameTimeline").innerHTML = GAME_ROUNDS.map((r, i) => `<div class="month-node ${i < game.round ? "done" : i === game.round && !game.complete ? "active" : ""}"><b>${i < game.round ? "✓" : r.icon}</b><span><strong>Month ${r.month}</strong><small>${escapeHtml(r.title)}</small></span></div>`).join("");
+}
+
+function renderGameHud() {
+  const g = state.game;
+  $("#gameCash").textContent = money.format(g.cash);
+  $("#gameDebt").textContent = money.format(g.debt);
+  $("#gameHappy").textContent = g.happy;
+  $("#gameStress").textContent = g.stress;
+  $("#gameProtection").textContent = g.protection;
+  $("#gameHappyBar").style.width = `${g.happy}%`;
+  $("#gameStressBar").style.width = `${g.stress}%`;
+  $("#gameProtectionBar").style.width = `${g.protection}%`;
+  $("#gameCashDelta").textContent = g.cash >= 0 ? "available buffer" : "buffer exhausted";
+  $("#gameLevel").textContent = Math.min(6, g.round + 1);
+  $("#gameRank").textContent = g.complete ? "Year completed" : `Month ${GAME_ROUNDS[g.round]?.month || 12} · Future Builder`;
+  $("#avatarCoins").textContent = state.avatarProfile.coins;
+}
+
+function renderRoom() {
+  const g = state.game;
+  const last = g.choices.at(-1);
+  $("#twinReaction").textContent = `“${last?.reaction || "I’m counting on the choices you make today."}”`;
+  $("#roomLabel").textContent = g.complete ? "Month 12 · Your future is here" : `Month ${GAME_ROUNDS[g.round]?.month || 1} · ${GAME_ROUNDS[g.round]?.kind || "Future"}`;
+  $("#roomScene").classList.toggle("room-stressed", g.stress >= 60);
+  $("#roomScene").classList.toggle("room-thriving", g.cash > 2500 && g.stress < 55);
+  $("#roomBills").style.opacity = String(Math.min(.95, .15 + g.debt / 3500));
+  $("#roomShield").style.opacity = String(g.protection / 100);
+  $("#gameCharacter").className = `game-character ${g.stress >= 60 ? "character-stressed" : g.happy >= 78 ? "character-happy" : ""}`;
+  applyAvatarProfile();
+  $("#decisionLog").innerHTML = g.choices.length ? g.choices.slice(-4).reverse().map((c) => `<div><b>M${GAME_ROUNDS[c.round].month}</b><span>${escapeHtml(c.label)}</span></div>`).join("") : "<small>No decisions yet.</small>";
+}
+
+function renderGameRound() {
+  const g = state.game;
+  const round = GAME_ROUNDS[g.round];
+  const stage = $("#gameRound");
+  stage.innerHTML = `<div class="round-progress"><span>DECISION ${g.round + 1} OF ${GAME_ROUNDS.length}</span><div><i style="width:${(g.round / GAME_ROUNDS.length) * 100}%"></i></div><b>Month ${round.month}</b></div><div class="event-banner ${round.kind.includes("SURPRISE") ? "surprise" : ""}"><span>${round.icon}</span><div><small>${round.kind}</small><h2>${escapeHtml(round.title)}</h2></div></div><p class="event-story">${escapeHtml(round.story)}</p><div class="decision-support"><div class="support-head"><span>NEED HELP DECIDING?</span><small>Resources inform your choice—they do not choose for you.</small></div><div class="support-actions">${DECISION_RESOURCES.map((r) => `<button type="button" data-resource="${r.id}"><b>${r.icon}</b><span><strong>${r.title}</strong><small>${r.limited ? `${g.consults} consultation${g.consults === 1 ? "" : "s"} left` : r.copy}</small></span></button>`).join("")}</div><div class="resource-answer" id="resourceAnswer" ${g.resourceOpen ? "" : "hidden"}>${g.resourceOpen ? resourceAnswer(g.resourceOpen, round, g) : ""}</div></div><div class="story-choices">${round.choices.map((c, i) => `<button type="button" data-choice="${i}"><span class="choice-letter">${String.fromCharCode(65 + i)}</span><span><strong>${escapeHtml(c.label)}</strong><small>${escapeHtml(c.detail)}</small></span><span class="choice-preview">${formatEffects(c.effects)}</span></button>`).join("")}</div><p class="choice-note">There is no perfect answer. Choose what matters most to you.</p>`;
+  stage.querySelectorAll("[data-choice]").forEach((button) => button.addEventListener("click", () => applyGameChoice(Number(button.dataset.choice))));
+  stage.querySelectorAll("[data-resource]").forEach((button) => button.addEventListener("click", () => openDecisionResource(button.dataset.resource)));
+  $("#resourceRmIntent")?.addEventListener("click", () => showToast("Question saved for Jamie · no meeting requested yet"));
+}
+
+function openDecisionResource(id) {
+  const g = state.game;
+  if (id === "twin" && g.resourceOpen !== "twin") {
+    if (g.consults <= 0) { showToast("You have used both Future You consultations this run"); return; }
+    g.consults -= 1;
+  }
+  g.resourceOpen = id;
+  renderGameRound();
+}
+
+function resourceAnswer(id, round, g) {
+  const answers = {
+    twin: g.cash < 1500 ? `<b>Future You:</b> “Our buffer is already thin. Look beyond today's payment and notice which option adds a recurring commitment.”` : g.stress > 55 ? `<b>Future You:</b> “Money matters, but our stress is becoming expensive too. Which choice creates breathing room we can sustain?”` : `<b>Future You:</b> “We still have room to choose. Compare the recurring cost, the risk it removes and what we value as a family.”`,
+    guide: round.month <= 2 ? `<b>Quick guide:</b> Emergency funds protect against unplanned costs. Instalments preserve cash today but reduce flexibility in future months.` : round.month === 3 ? `<b>Quick guide:</b> A protection gap estimates the financial support dependants may need if income is interrupted. More cover is not automatically better—affordability matters.` : round.month === 5 ? `<b>Quick guide:</b> Compare total cost, useful life and effect on your emergency buffer. Cheap today can cost more later; debt also has a flexibility cost.` : `<b>Quick guide:</b> A sustainable plan balances money, time and wellbeing. Test whether the choice still works after another unexpected expense.`,
+    rm: `<b>Jamie would ask:</b> “What outcome worries you most here—and what monthly commitment would still feel comfortable if another surprise happened?” <button type="button" class="resource-rm-link" id="resourceRmIntent">Save this for my RM</button>`,
+  };
+  return answers[id] || "";
+}
+
+function formatEffects(e) {
+  const parts = [];
+  if (e.cash) parts.push(`${e.cash > 0 ? "+" : ""}${money.format(e.cash)} cash`);
+  if (e.debt) parts.push(`+${money.format(e.debt)} debt`);
+  if (e.happy) parts.push(`${e.happy > 0 ? "+" : ""}${e.happy} wellbeing`);
+  if (e.stress) parts.push(`${e.stress > 0 ? "+" : ""}${e.stress} stress`);
+  if (e.protection) parts.push(`${e.protection > 0 ? "+" : ""}${e.protection} protection`);
+  return parts.slice(0, 2).join(" · ");
+}
+
+function renderGameResults() {
+  const g = state.game;
+  const score = gameScore(g);
+  const persona = score >= 82 ? ["The Resilient Planner", "You protected what mattered without forgetting to live."] : score >= 65 ? ["The Adaptive Balancer", "You navigated the year with heart, making thoughtful trade-offs under pressure."] : ["The Courageous Improviser", "You made it through a demanding year. Your next opportunity is rebuilding the safety net."];
+  const ignored = [4200, 3750, 2550, 1600, 650, -300, -1250];
+  const uplift = g.cash - ignored.at(-1);
+  const achievements = gameAchievements(g);
+  $("#gameRound").innerHTML = `<div class="results-celebrate"><span>YEAR COMPLETE · +${g.earnedCoins} FUTURE COINS</span><h2>Meet Future Amira.</h2><p>${escapeHtml(persona[1])}</p></div><div class="result-score"><div class="score-orbit"><strong>${score}</strong><span>FUTURE SCORE</span></div><div><p class="eyebrow">YOUR FINANCIAL PERSONALITY</p><h2>${escapeHtml(persona[0])}</h2><p>Ending cash <b>${money.format(g.cash)}</b> · Debt <b>${money.format(g.debt)}</b> · Protection <b>${g.protection}/100</b></p></div></div><div class="scenario-comparison"><div class="comparison-head"><p class="eyebrow">THREE POSSIBLE FUTURES</p><h3>Same life event. Different levels of support.</h3></div>${scenarioComparison(g)}</div><div class="result-chart"><div><p class="eyebrow">THE FUTURE YOU CREATED</p><h3>${uplift >= 0 ? "+" : ""}${money.format(uplift)} vs unmanaged path</h3></div>${gameResultChart(g.history)}</div><div class="achievement-grid">${achievements.map(([icon,title,copy]) => `<div><b>${icon}</b><span><strong>${title}</strong><small>${copy}</small></span></div>`).join("")}</div><div class="result-actions"><button type="button" class="secondary-button" id="rewindFuture">↶ Rewind one decision</button><button type="button" class="primary-button" id="shareGameRm">Share this future with Jamie</button><button type="button" class="text-button" id="restartGame">Play again</button></div><div class="rm-handoff result-handoff" id="gameHandoff" hidden><span>✓</span><div><strong>Jamie received more than a product lead</strong><small>Priority: family liquidity · Main trade-off: ${escapeHtml(g.choices[1]?.label || "daycare")} · Protection: ${g.protection}/100 · Customer requested a conversation.</small></div></div>`;
+  $("#rewindFuture").addEventListener("click", renderRewindChoices);
+  $("#restartGame").addEventListener("click", () => { state.game = newGame(); renderPlayFuture(); });
+  $("#shareGameRm").addEventListener("click", () => { $("#gameHandoff").hidden = false; $("#shareGameRm").textContent = "Shared with Jamie ✓"; $("#shareGameRm").disabled = true; showToast("Your future and priorities were shared with Jamie ✓"); });
+}
+
+function scenarioComparison(g) {
+  const current = { cash: Math.round(g.cash), stress: g.stress, protection: g.protection };
+  const conservative = { cash: Math.round(g.cash - 2400), stress: Math.min(100, g.stress + 18), protection: Math.max(10, g.protection - 25) };
+  const optimised = { cash: Math.round(Math.max(g.cash + 3200, 4800)), stress: Math.max(18, g.stress - 14), protection: Math.max(78, g.protection) };
+  return `<div class="comparison-grid"><div><span>CONSERVATIVE</span><strong>${money.format(conservative.cash)}</strong><small>Stress ${conservative.stress} · Protection ${conservative.protection}</small><i style="width:${Math.max(5, conservative.protection)}%"></i></div><div class="current"><span>YOUR CURRENT PATH</span><strong>${money.format(current.cash)}</strong><small>Stress ${current.stress} · Protection ${current.protection}</small><i style="width:${Math.max(5, current.protection)}%"></i></div><div class="optimised"><span>OPTIMISED SUPPORT</span><strong>${money.format(optimised.cash)}</strong><small>Stress ${optimised.stress} · Protection ${optimised.protection}</small><i style="width:${Math.max(5, optimised.protection)}%"></i></div></div><p class="comparison-note">Illustrative—not a promise or credit decision. “Optimised” combines an affordable buffer, suitable protection and sustainable cashflow changes.</p>`;
+}
+
+function applyAvatarProfile() {
+  const p = state.avatarProfile;
+  const equipped = new Set(p.equipped);
+  [$("#gameCharacter"), $("#studioCharacter")].filter(Boolean).forEach((el) => { el.dataset.colour = p.colour; });
+  [$("#avatarHat"), $("#studioHat")].filter(Boolean).forEach((el) => { el.hidden = !equipped.has("cap"); });
+  [$("#avatarGlasses"), $("#studioGlasses")].filter(Boolean).forEach((el) => { el.hidden = !equipped.has("glasses"); });
+  [$("#avatarPet"), $("#studioPet")].filter(Boolean).forEach((el) => { el.hidden = !equipped.has("pet"); });
+  [$("#avatarLamp"), $("#studioLamp")].filter(Boolean).forEach((el) => { el.hidden = !equipped.has("lamp"); });
+  document.querySelectorAll(".room-plant").forEach((el) => { el.hidden = !equipped.has("plant"); });
+}
+
+function renderAvatarStudio() {
+  const p = state.avatarProfile;
+  $("#studioCoins").textContent = p.coins;
+  $("#avatarShop").innerHTML = AVATAR_ITEMS.map((item) => { const owned = p.owned.includes(item.id); const equipped = p.equipped.includes(item.id); return `<article class="shop-item ${equipped ? "equipped" : ""}"><b>${item.icon}</b><div><strong>${item.name}</strong><small>${item.description}</small><span>${owned ? "Owned" : `✦ ${item.cost}`}</span></div><button type="button" data-shop="${item.id}">${equipped ? "Equipped ✓" : owned ? "Equip" : "Buy"}</button></article>`; }).join("");
+  $("#avatarShop").querySelectorAll("[data-shop]").forEach((button) => button.addEventListener("click", () => buyOrEquipAvatarItem(button.dataset.shop)));
+  $("#avatarColours").querySelectorAll("[data-colour]").forEach((button) => button.classList.toggle("active", button.dataset.colour === p.colour));
+  applyAvatarProfile();
+}
+
+function buyOrEquipAvatarItem(id) {
+  const p = state.avatarProfile;
+  const item = AVATAR_ITEMS.find((x) => x.id === id);
+  if (!item) return;
+  if (!p.owned.includes(id)) {
+    if (p.coins < item.cost) { showToast(`Earn ${item.cost - p.coins} more coins to unlock ${item.name}`); return; }
+    p.coins -= item.cost; p.owned.push(id); p.equipped.push(id); showToast(`${item.name} unlocked!`);
+  } else if (p.equipped.includes(id)) p.equipped = p.equipped.filter((x) => x !== id);
+  else p.equipped.push(id);
+  renderAvatarStudio(); renderGameHud(); applyAvatarProfile();
+}
+
+function setFutureExperience(name) {
+  const canvas = name === "canvas";
+  $("#gameExperience").hidden = canvas;
+  $("#canvasExperience").hidden = !canvas;
+  $("#gameExperience").classList.toggle("active", !canvas);
+  $("#canvasExperience").classList.toggle("active", canvas);
+  $("#experienceTabs").querySelectorAll("[data-experience]").forEach((button) => {
+    const active = button.dataset.experience === name;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  if (canvas) renderFutureCanvas();
+}
+
+function renderFutureCanvas() {
+  renderEventPalette();
+  renderDropTimeline();
+  renderCanvasWorld();
+  renderConnections();
+}
+
+function renderEventPalette() {
+  const el = $("#eventPalette");
+  if (!el) return;
+  const chosen = new Set(state.futureCanvas.events.map((x) => x.id));
+  const list = CANVAS_EVENTS.filter((event) => state.futureCanvas.filter === "all" || event.category === state.futureCanvas.filter);
+  el.innerHTML = list.map((event) => `<button type="button" class="event-drag-card ${chosen.has(event.id) ? "used" : ""}" draggable="true" data-event-id="${event.id}"><b>${event.icon}</b><span><strong>${escapeHtml(event.title)}</strong><small>${event.recommended ? "Recommended for your life stage" : "Explore this possibility"}</small></span><em>${event.monthly >= 0 ? "+" : ""}${money.format(event.monthly)}/mo</em><i>⋮⋮</i></button>`).join("");
+  el.querySelectorAll("[data-event-id]").forEach((card) => {
+    card.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", card.dataset.eventId); e.dataTransfer.effectAllowed = "copy"; card.classList.add("dragging"); });
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
+    card.addEventListener("click", () => addCanvasEvent(card.dataset.eventId));
+  });
+}
+
+function renderDropTimeline() {
+  const el = $("#dropTimeline");
+  if (!el) return;
+  const years = ["Now", "+2 years", "+5 years", "+10 years"];
+  el.innerHTML = years.map((label, slot) => `<div class="year-drop-zone ${state.futureCanvas.events.some((e) => e.slot === slot) ? "has-events" : ""}" data-slot="${slot}"><span>${label}</span><div>${state.futureCanvas.events.filter((e) => e.slot === slot).map((placed) => { const event = CANVAS_EVENTS.find((x) => x.id === placed.id); return `<button type="button" class="placed-event" data-remove-event="${event.id}" title="Remove ${escapeHtml(event.title)}"><b>${event.icon}</b><small>${escapeHtml(event.title)}</small><i>×</i></button>`; }).join("") || "<small>Drop an event here</small>"}</div></div>`).join("");
+  el.querySelectorAll(".year-drop-zone").forEach((zone) => {
+    zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+    zone.addEventListener("drop", (e) => { e.preventDefault(); zone.classList.remove("drag-over"); addCanvasEvent(e.dataTransfer.getData("text/plain"), Number(zone.dataset.slot)); });
+  });
+  el.querySelectorAll("[data-remove-event]").forEach((button) => button.addEventListener("click", () => removeCanvasEvent(button.dataset.removeEvent)));
+}
+
+function addCanvasEvent(id, slot) {
+  if (!CANVAS_EVENTS.some((event) => event.id === id)) return;
+  const existing = state.futureCanvas.events.find((event) => event.id === id);
+  if (existing) {
+    if (Number.isInteger(slot)) existing.slot = slot;
+    else showToast("That event is already on your canvas");
+  } else {
+    const occupied = new Set(state.futureCanvas.events.map((event) => event.slot));
+    const nextSlot = Number.isInteger(slot) ? slot : [0, 1, 2, 3].find((x) => !occupied.has(x)) ?? 3;
+    state.futureCanvas.events.push({ id, slot: nextSlot });
+  }
+  renderFutureCanvas();
+}
+
+function removeCanvasEvent(id) {
+  state.futureCanvas.events = state.futureCanvas.events.filter((event) => event.id !== id);
+  renderFutureCanvas();
+}
+
+function renderCanvasWorld() {
+  const selected = state.futureCanvas.events.map((placed) => CANVAS_EVENTS.find((event) => event.id === placed.id)).filter(Boolean);
+  const ids = new Set(selected.map((event) => event.id));
+  $("#worldHouse").classList.toggle("visible", ids.has("home"));
+  $("#worldCar").classList.toggle("visible", ids.has("car"));
+  $("#worldFamily").classList.toggle("visible", ids.has("second-child") || ids.has("eldercare"));
+  $("#worldRing").classList.toggle("visible", ids.has("wedding"));
+  $("#futureWorld").classList.toggle("world-busy", selected.reduce((sum, event) => sum + event.stress, 0) > 22);
+  $("#worldCaption").textContent = selected.at(-1)?.caption || "Add a life event to begin building Amira's future.";
+
+  const upfront = selected.reduce((sum, event) => sum + event.cost, 0);
+  const monthly = selected.reduce((sum, event) => sum + event.monthly, 0);
+  const assets = selected.reduce((sum, event) => sum + (event.asset || 0), 0);
+  const stress = Math.max(0, Math.min(100, 28 + selected.reduce((sum, event) => sum + event.stress, 0) - state.futureCanvas.connections.length * 2));
+  const runway = Math.max(-24, Math.round((186400 - upfront) / Math.max(1, 4650 - Math.min(1550, monthly))));
+  $("#canvasForecast").innerHTML = `<div><span>UPFRONT FUNDING</span><strong>${money.format(upfront)}</strong><small>${selected.length ? `${selected.length} planned event${selected.length === 1 ? "" : "s"}` : "No events added"}</small></div><div><span>MONTHLY CASHFLOW CHANGE</span><strong class="${monthly < 0 ? "negative" : ""}">${monthly >= 0 ? "+" : ""}${money.format(monthly)}</strong><small>once all events begin</small></div><div><span>PROJECTED ASSETS</span><strong>${money.format(186400 + assets)}</strong><small>illustrative 10-year position</small></div><div><span>RESILIENCE WINDOW</span><strong>${runway > 24 ? "24+ mo" : `${runway} mo`}</strong><small>before safeguards</small></div><div><span>WELLBEING PRESSURE</span><strong>${stress}/100</strong><small>${state.futureCanvas.connections.length ? "informed by connected context" : "estimated from event load"}</small></div>`;
+}
+
+function renderConnections() {
+  const connected = new Set(state.futureCanvas.connections);
+  $("#connectionList")?.querySelectorAll("[data-provider]").forEach((button) => {
+    const active = connected.has(button.dataset.provider);
+    button.classList.toggle("connected", active);
+    button.querySelector("b").textContent = active ? "Connected ✓" : "Connect";
+  });
+  if (!$("#healthInsight")) return;
+  $("#healthInsight").innerHTML = connected.size ? `<span>WELLBEING CONTEXT ACTIVE</span><div class="health-mini-grid"><div><strong>8,420</strong><small>avg daily steps</small></div><div><strong>7h 04m</strong><small>avg sleep</small></div><div><strong>Good</strong><small>recovery trend</small></div></div><p>Simulated summary from ${[...connected].join(", ")}. Used only to personalise wellbeing assumptions.</p>` : `<span>NO DATA CONNECTED</span><p>Connecting is optional. Health data adds wellbeing context; it never changes credit eligibility or suitability rules.</p>`;
+}
+
+function gameResultChart(values) {
+  const min = Math.min(...values, 0), max = Math.max(...values, 1), range = max - min || 1;
+  const pts = values.map((v, i) => `${20 + i * (460 / Math.max(1, values.length - 1))},${125 - ((v - min) / range) * 95}`).join(" ");
+  return `<svg viewBox="0 0 500 150" role="img" aria-label="Cash buffer through the year"><line x1="20" y1="125" x2="480" y2="125" stroke="var(--line)"/><polyline points="${pts}" fill="none" stroke="var(--sc-brand-blue)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${values.map((v,i)=>`<circle cx="${20+i*(460/Math.max(1,values.length-1))}" cy="${125-((v-min)/range)*95}" r="4" fill="white" stroke="var(--sc-brand-blue)" stroke-width="3"/>`).join("")}</svg>`;
+}
+
+function renderRewindChoices() {
+  const g = state.game;
+  $("#gameRound").innerHTML = `<div class="rewind-head"><span>↶</span><div><p class="eyebrow">REWIND THE FUTURE</p><h2>Which decision would you change?</h2><p>Replay from that moment and watch a different future unfold.</p></div></div><div class="rewind-list">${g.choices.map((c, i) => `<button data-rewind="${i}"><b>Month ${GAME_ROUNDS[c.round].month}</b><span><strong>${escapeHtml(GAME_ROUNDS[c.round].title)}</strong><small>You chose: ${escapeHtml(c.label)}</small></span><em>Change →</em></button>`).join("")}</div>`;
+  $("#gameRound").querySelectorAll("[data-rewind]").forEach((button) => button.addEventListener("click", () => rewindGame(Number(button.dataset.rewind))));
+}
+
+function rewindGame(choicePosition) {
+  const previous = state.game.choices.slice(0, choicePosition);
+  const retainedCoins = state.avatarProfile.coins;
+  state.game = newGame();
+  previous.forEach((saved) => applyGameChoice(saved.choiceIndex));
+  state.avatarProfile.coins = retainedCoins;
+  renderPlayFuture();
+  showToast(`Rewound to Month ${GAME_ROUNDS[choicePosition].month} · choose a different path`);
+}
+
+function renderPlayFuture() {
+  if (!state.scenario || !$("#gameRound")) return;
+  if (!state.game) state.game = newGame();
+  renderGameHud();
+  renderGameTimeline();
+  renderRoom();
+  if (state.game.complete) renderGameResults(); else renderGameRound();
 }
 
 function renderFutureSuggestions() {
@@ -929,7 +1290,10 @@ function bindActions() {
     });
   });
   document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
-    btn.addEventListener("click", () => setView(btn.dataset.view));
+    btn.addEventListener("click", async () => {
+      if (btn.dataset.view === "future" && state.scenarioId !== "new-parent") await loadScenario("new-parent");
+      setView(btn.dataset.view);
+    });
   });
   $("#futureBranch")?.querySelectorAll(".branch-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -946,6 +1310,13 @@ function bindActions() {
     if (input) input.value = "";
     askFutureYou(q);
   });
+  $("#openAvatarStudio")?.addEventListener("click", () => { renderAvatarStudio(); $("#avatarStudio").showModal(); });
+  $("#closeAvatarStudio")?.addEventListener("click", () => $("#avatarStudio").close());
+  $("#avatarColours")?.querySelectorAll("[data-colour]").forEach((button) => button.addEventListener("click", () => { state.avatarProfile.colour = button.dataset.colour; renderAvatarStudio(); applyAvatarProfile(); }));
+  $("#experienceTabs")?.querySelectorAll("[data-experience]").forEach((button) => button.addEventListener("click", () => setFutureExperience(button.dataset.experience)));
+  $("#eventFilters")?.querySelectorAll("[data-category]").forEach((button) => button.addEventListener("click", () => { state.futureCanvas.filter = button.dataset.category; $("#eventFilters").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === button)); renderEventPalette(); }));
+  $("#clearCanvas")?.addEventListener("click", () => { state.futureCanvas.events = []; renderFutureCanvas(); showToast("Future canvas cleared"); });
+  $("#connectionList")?.querySelectorAll("[data-provider]").forEach((button) => button.addEventListener("click", () => { const provider = button.dataset.provider; state.futureCanvas.connections = state.futureCanvas.connections.includes(provider) ? state.futureCanvas.connections.filter((x) => x !== provider) : [...state.futureCanvas.connections, provider]; renderConnections(); renderCanvasWorld(); showToast(`${provider} ${state.futureCanvas.connections.includes(provider) ? "connected with consent" : "disconnected"}`); }));
   bindSidebarToggle();
 }
 
