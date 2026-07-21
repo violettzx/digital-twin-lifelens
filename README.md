@@ -9,6 +9,25 @@ An internal relationship-manager workspace that turns detected customer life eve
 - **Next best conversation:** products ranked by need, eligibility, suitability, and projected customer value.
 - **Digital twin simulator:** select or remove solutions and see their modeled 12-month liquidity impact immediately.
 - **Meeting brief:** generates a needs-led opener, discovery questions, relevant solutions, and a compliance reminder.
+- **12 Months to Future You:** a six-round customer game where childbirth costs, daycare, protection, surprise expenses, career choices, and family goals create genuine financial trade-offs.
+- **Branching game state:** every decision changes cash, debt, wellbeing, stress, protection, the customer's room, and the ending personality. Players can rewind one decision and create a different timeline.
+- **Meaningful achievements:** rewards recognise resilience, avoiding debt, protection, balanced wellbeing, and preserving joy—not product purchases.
+- **Avatar Studio:** customers earn Future Coins, choose their avatar colour, and buy or equip cosmetic items and room companions. Cosmetics never influence financial outcomes or product recommendations.
+- **Decision resources:** each round offers a limited Future You consultation, a plain-language financial guide, and an optional RM question so players can make informed trade-offs without being given a prescribed answer.
+- **Three-path comparison:** the final screen compares conservative, current-choice, and optimised-support futures with clear illustrative disclaimers.
+- **Future Canvas:** a separate customer tab where demographic-relevant life events can be dragged onto a 10-year timeline. A visual world, monthly cashflow, asset position, resilience window and wellbeing pressure update immediately.
+- **Connected Life:** opt-in simulated Apple Health, Apple Watch, Garmin and Fitbit summaries can refine wellbeing context. Health information is explicitly separated from credit eligibility and product-suitability logic.
+- **Human digital twin:** the customer avatar now has a complete body, outfit, accessories and room customisation, with a corrected responsive game banner.
+- **Consented RM handoff:** customers can save a scenario or share their chosen future with their RM, turning exploration into a qualified, needs-led conversation.
+
+## Two-sided value loop
+
+The RM workspace detects a meaningful life change and models suitable support. The customer experience then makes the same deterministic projection understandable and engaging: customers explore a chapter, choose actions, and see Future You react. If the customer asks for help, the selected scenario becomes useful context for the RM instead of a cold product lead.
+
+- **Customer value:** clearer trade-offs, safer experimentation, more confidence, and timely human support.
+- **Business value:** higher digital engagement, consented intent signals, better-prepared RM conversations, and more relevant product conversion.
+
+The RM Today view also includes an illustrative pilot-impact strip for consented intent signals, preparation time saved, qualified pipeline value, and target meeting-conversion uplift. These are explicitly labelled as hackathon demonstration metrics rather than measured production results.
 
 ## Intelligence pipeline
 
