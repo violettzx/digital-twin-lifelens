@@ -12,29 +12,29 @@
   </head>
   <body data-sidebar="thin">
     <aside class="sidebar" id="sidebar" data-mode="thin">
-      <a class="brand" href="#" id="brandHome" aria-label="Standard Chartered · LifeLens">
+      <a class="brand" href="/today" id="brandHome" aria-label="Standard Chartered · LifeLens">
         <img class="brand-mark" src="/assets/sc-mark.png" alt="" width="44" height="44" />
         <img class="brand-logo" src="/assets/sc-logo.png" alt="Standard Chartered" width="160" height="84" />
       </a>
       <nav>
-        <button class="nav-item active" type="button" data-view="today" aria-label="Today">
+        <a class="nav-item active" href="/today" data-view="today" aria-label="Today" aria-current="page">
           <span aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 01-1 1h-5.5v-5.5h-3V21H5a1 1 0 01-1-1v-9.5z"/></svg>
           </span>
           <small>Today</small>
-        </button>
-        <button class="nav-item" type="button" data-view="customers" aria-label="Customers">
+        </a>
+        <a class="nav-item" href="/customers" data-view="customers" aria-label="Customers">
           <span aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="3.5"/><path d="M22 21v-2a3.5 3.5 0 00-2.5-3.35"/><path d="M16.5 3.6a3.5 3.5 0 010 6.8"/></svg>
           </span>
           <small>Customers</small>
-        </button>
-        <button class="nav-item" type="button" data-view="future" aria-label="Future You">
+        </a>
+        <a class="nav-item" href="/future" data-view="future" aria-label="Future You">
           <span aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M18.4 5.6l-2.1 2.1"/><path d="M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.25"/></svg>
           </span>
           <small>Play Future</small>
-        </button>
+        </a>
       </nav>
       <div class="side-bottom">
         <button class="rm-chip" type="button" aria-label="Jamie Lee, account menu">
@@ -364,7 +364,17 @@
         </div>
 
         <details class="future-lab card" id="futureLab">
-          <summary>Ask Future You anything <span>AI twin chat →</span></summary>
+          <summary>
+            <span class="future-lab-icon" aria-hidden="true">✦</span>
+            <span class="future-lab-copy">
+              <strong>Ask Future You anything</strong>
+              <small>Chat with your AI twin about choices, trade-offs, and what comes next</small>
+            </span>
+            <span class="future-lab-toggle" aria-hidden="true">
+              <span>AI twin chat</span>
+              <b></b>
+            </span>
+          </summary>
           <div class="future-lab-body">
             <div><div class="branch-toggle" id="futureBranch" role="group" aria-label="Projection path"><button type="button" class="branch-btn active" data-branch="ignored">Without my moves</button><button type="button" class="branch-btn" data-branch="accepted">With my moves</button></div><div class="suggest-list" id="futureSuggestions"></div></div>
             <section class="future-chat"><div class="chat-thread" id="futureThread" aria-live="polite"></div><form class="chat-compose" id="futureForm"><input id="futureInput" type="text" placeholder="Ask Future You a question…" autocomplete="off" /><button class="primary-button" type="submit" id="futureSend">Ask</button></form></section>

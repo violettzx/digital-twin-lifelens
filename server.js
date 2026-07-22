@@ -122,6 +122,11 @@ function findScenario(id) {
   return scenarios.find((scenario) => scenario.id === id);
 }
 
+const spaRoutes = ["/today", "/customers", "/future", "/play-future", "/client"];
+app.get(spaRoutes, (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 app.listen(port, () => {
   console.log(`LifeLens running at http://localhost:${port}`);
 });

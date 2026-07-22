@@ -46,6 +46,22 @@ const VIEW_META = {
   },
 };
 
+const VIEW_PATHS = {
+  today: "/today",
+  customers: "/customers",
+  future: "/future",
+  client: "/client",
+};
+
+const PATH_VIEWS = {
+  "/": "today",
+  "/today": "today",
+  "/customers": "customers",
+  "/future": "future",
+  "/play-future": "future",
+  "/client": "client",
+};
+
 const money = new Intl.NumberFormat("en-SG", {
   style: "currency",
   currency: "SGD",
@@ -130,14 +146,43 @@ async function init() {
   bindActions();
   if (clientInvite) {
     document.body.dataset.clientExperience = "true";
-    setView("future");
-  } else setView("today");
+    setView("future", { history: "replace" });
+  } else {
+    setView(viewFromLocation() || "today", { history: "replace" });
+  }
   renderFuturePicker();
   renderFutureSuggestions();
   renderFutureThread();
 }
 
-function setView(name) {
+function normalizePath(pathname = window.location.pathname) {
+  const cleaned = pathname.replace(/\/+$/, "");
+  return cleaned || "/";
+}
+
+function viewFromLocation() {
+  return PATH_VIEWS[normalizePath()] || null;
+}
+
+function pathForView(name) {
+  return VIEW_PATHS[name] || VIEW_PATHS.today;
+}
+
+function syncUrl(name, { replace = false } = {}) {
+  const url = new URL(window.location.href);
+  url.pathname = pathForView(name);
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (next === current) {
+    history.replaceState({ view: name }, "", next);
+    return;
+  }
+  if (replace) history.replaceState({ view: name }, "", next);
+  else history.pushState({ view: name }, "", next);
+}
+
+function setView(name, { history: historyMode = "push" } = {}) {
+  if (!VIEW_META[name] && name !== "client") name = "today";
   state.view = name;
   document.querySelectorAll(".app-view").forEach((panel) => {
     const active = panel.dataset.viewPanel === name;
@@ -147,7 +192,10 @@ function setView(name) {
   // Client is a drill-in from Today — keep Today highlighted in the nav
   const navView = name === "client" ? "today" : name;
   document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.view === navView);
+    const active = btn.dataset.view === navView;
+    btn.classList.toggle("active", active);
+    if (active) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
   });
 
   if (name === "client") {
@@ -161,6 +209,9 @@ function setView(name) {
     $("#topTitle").textContent = meta.title;
     $("#topSubhead").textContent = meta.subhead;
   }
+
+  if (historyMode === "push") syncUrl(name);
+  else if (historyMode === "replace") syncUrl(name, { replace: true });
 
   if (name === "customers") openCustomerBook();
   if (name === "today" && state.twinCards) {
@@ -1157,8 +1208,8 @@ function renderFutureSuggestions() {
 }
 
 function twinPathLabel(branch) {
-  if (branch === "accepted") return "Accepted path";
-  if (branch === "ignored") return "Ignored path";
+  if (branch === "accepted") return "With my moves";
+  if (branch === "ignored") return "Without my moves";
   return null;
 }
 
@@ -1206,14 +1257,14 @@ function renderFutureThread() {
 function thinkingCue(question) {
   const q = String(question || "").toLowerCase();
   if (q.includes("watch")) return "Scanning next month’s liquidity trough…";
-  if (q.includes("different") || q.includes("two futures")) return "Comparing ignored vs accepted branches…";
+  if (q.includes("different") || q.includes("two futures")) return "Comparing without vs with my moves…";
   if (q.includes("daycare")) return "Tracing daycare’s effect on monthly surplus…";
   if (q.includes("run out") || q.includes("out of cash")) return "Walking the cash runway month by month…";
   if (q.includes("buys") || q.includes("which action")) return "Ranking autopilot levers by impact…";
   if (q.includes("month four") || q.includes("month 4")) return "Zooming into month four cashflow…";
   if (q.includes("afford")) return "Stress-testing wedding spikes against the balance path…";
   if (q.includes("month five") || q.includes("month 5")) return "Opening the month-five ledger…";
-  if (q.includes("calm") || q.includes("accepted")) return "Measuring how much calmer the accepted path feels…";
+  if (q.includes("calm") || q.includes("accepted") || q.includes("with my moves")) return "Measuring how much calmer the path with my moves feels…";
   return "Reading the projection trajectory…";
 }
 
@@ -1305,10 +1356,16 @@ function bindActions() {
     });
   });
   document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (btn.dataset.view === state.view) return;
       if (btn.dataset.view === "future" && state.scenarioId !== "new-parent") await loadScenario("new-parent");
       setView(btn.dataset.view);
     });
+  });
+  window.addEventListener("popstate", (e) => {
+    const view = e.state?.view || viewFromLocation() || "today";
+    setView(view, { history: "none" });
   });
   $("#futureBranch")?.querySelectorAll(".branch-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1337,6 +1394,7 @@ function bindActions() {
 
 function futureInviteUrl() {
   const url = new URL(window.location.href);
+  url.pathname = pathForView("future");
   url.search = "";
   url.hash = "";
   url.searchParams.set("future", "client");
