@@ -120,11 +120,18 @@ const nodes = {
 init();
 
 async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const sharedScenario = params.get("scenario");
+  const clientInvite = params.get("future") === "client";
+  if (sharedScenario && customerDetails[sharedScenario]) state.scenarioId = sharedScenario;
   const list = await fetchJson("/api/scenarios");
   state.scenariosList = list.scenarios;
   await Promise.all([loadTwinImpactStrip(), loadScenario(state.scenarioId)]);
   bindActions();
-  setView("today");
+  if (clientInvite) {
+    document.body.dataset.clientExperience = "true";
+    setView("future");
+  } else setView("today");
   renderFuturePicker();
   renderFutureSuggestions();
   renderFutureThread();
@@ -1271,6 +1278,14 @@ function bindActions() {
   });
   $("#showEvidence").addEventListener("click", openEvidence);
   $("#closeEvidence").addEventListener("click", () => $("#evidenceDialog").close());
+  $("#emailFutureLink")?.addEventListener("click", openShareFuture);
+  $("#closeShareFuture")?.addEventListener("click", () => $("#shareFutureDialog").close());
+  $("#copyFutureLink")?.addEventListener("click", async () => {
+    await navigator.clipboard?.writeText($("#shareFutureLink").textContent);
+    showToast("Playable link copied ✓");
+  });
+  $("#previewFutureLink")?.addEventListener("click", () => window.open($("#shareFutureLink").textContent, "_blank", "noopener"));
+  $("#sendFutureEmail")?.addEventListener("click", openFutureEmail);
   $("#viewAllCustomers")?.addEventListener("click", () => setView("customers"));
   $("#backToToday")?.addEventListener("click", () => setView("today"));
   $("#homeOpenTwin")?.addEventListener("click", () => openClient(state.homePreviewId || state.scenarioId));
@@ -1318,6 +1333,40 @@ function bindActions() {
   $("#clearCanvas")?.addEventListener("click", () => { state.futureCanvas.events = []; renderFutureCanvas(); showToast("Future canvas cleared"); });
   $("#connectionList")?.querySelectorAll("[data-provider]").forEach((button) => button.addEventListener("click", () => { const provider = button.dataset.provider; state.futureCanvas.connections = state.futureCanvas.connections.includes(provider) ? state.futureCanvas.connections.filter((x) => x !== provider) : [...state.futureCanvas.connections, provider]; renderConnections(); renderCanvasWorld(); showToast(`${provider} ${state.futureCanvas.connections.includes(provider) ? "connected with consent" : "disconnected"}`); }));
   bindSidebarToggle();
+}
+
+function futureInviteUrl() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("future", "client");
+  url.searchParams.set("scenario", state.scenarioId);
+  url.searchParams.set("invite", `demo-${state.scenarioId}`);
+  return url.toString();
+}
+
+function openShareFuture() {
+  const d = customerDetails[state.scenarioId];
+  const firstName = d.fullName.split(" ")[0];
+  $("#shareInitials").textContent = d.initials;
+  $("#shareClientName").textContent = d.fullName;
+  $("#shareClientEmail").value = `${d.fullName.toLowerCase().replace(/[^a-z]+/g, ".").replace(/^\.|\.$/g, "")}@example.com`;
+  $("#shareFutureLink").textContent = futureInviteUrl();
+  $("#shareEmailMessage").value = `Hi ${firstName},\n\nI’d like to invite you to try Future You, a private interactive experience that lets you explore different financial choices and see how they could shape the next 12 months.\n\nIt is illustrative, not financial advice, and you can decide whether to share your results with me.\n\nRegards,\nJamie`;
+  $("#shareFutureDialog").showModal();
+}
+
+function openFutureEmail() {
+  const email = $("#shareClientEmail").value.trim();
+  if (!email || !$("#shareClientEmail").checkValidity()) {
+    $("#shareClientEmail").reportValidity();
+    return;
+  }
+  const subject = "Your private Future You experience";
+  const body = `${$("#shareEmailMessage").value.trim()}\n\nPlay Future You:\n${futureInviteUrl()}`;
+  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  $("#shareFutureDialog").close();
+  showToast("Email prepared · invitation logged ✓");
 }
 
 function openCustomerBook() {
